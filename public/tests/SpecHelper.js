@@ -1,6 +1,6 @@
 var fixture;
 
-function loadFixture(path) {  
+function loadFixture(path) {
   var html;
   jQuery.ajax({
     url: '/index.html',
@@ -8,7 +8,7 @@ function loadFixture(path) {
       html = result;
     },
     async: false
-  });          
+  });
   return $.parseHTML(html);
 }
 
