@@ -1,10 +1,7 @@
 'use strict';
 
 function googleSignIn(googleUser) {
-
     var id_token = googleUser.getAuthResponse().id_token;
-    console.log('id_token', id_token);
-
     AWS.config.update({
         region: "us-east-1",
         credentials: new AWS.CognitoIdentityCredentials({
@@ -16,11 +13,9 @@ function googleSignIn(googleUser) {
     });
 
     function refresh() {
-        console.log('refresh called');
         return gapi.auth2.getAuthInstance().signIn({
             prompt: 'login'
         }).then(function(userUpdate) {
-            console.log('userUpdate', userUpdate);
             var creds = AWS.config.credentials;
             var newToken = userUpdate.getAuthResponse().id_token;
             creds.params.Logins['accounts.google.com'] = newToken;
@@ -29,7 +24,6 @@ function googleSignIn(googleUser) {
     }
 
     learnjs.awsRefresh().then(function(id) {
-        console.log('id', id);
         learnjs.identity.resolve({
             id: id,
             email: googleUser.getBasicProfile().getEmail(),
@@ -58,12 +52,7 @@ learnjs.problems = [
 
 learnjs.awsRefresh = function() {
     var deferred = new $.Deferred();
-    console.log('awsRefresh called');
-    console.log('AWS.config.credentials', AWS.config.credentials);
-    console.log('AWS.config.credentials.identityId', AWS.config.credentials.identityId);
-
     AWS.config.credentials.refresh(function(err) {
-        console.log('err', err);
         if (err) {
             deferred.reject(err);
         } else {
@@ -81,7 +70,6 @@ learnjs.flashElement = function(elem, content) {
 };
 
 learnjs.triggerEvent = function(name, args) {
-    console.log('triggerEvent', name, args);
     $('.view-container > *').trigger(name, args);
 };
 
@@ -92,7 +80,6 @@ learnjs.applyObject = function(obj, elem) {
 };
 
 learnjs.template = function(name) {
-    console.log('name', name);
     return $('.templates .' + name).clone();
 };
 
@@ -101,10 +88,13 @@ learnjs.landingView = function() {
 };
 
 learnjs.profileView = function() {
-    return learnjs.template('profile-view');
+    console.log('profile view');
+    var view = learnjs.template('profile-view');
     learnjs.identity.done(function(identity) {
+        console.log('identity', identity);
         view.find('.email').text(identity.email);
     });
+    return view;
 }
 
 learnjs.buildCorrectFlash = function(problemNumber) {
@@ -158,7 +148,6 @@ learnjs.problemView = function(data) {
         $('.nav-list').append(buttonItem);
 
         view.bind('removingView', function() {
-            console.log('removingView called');
             buttonItem.remove();
         });
 
@@ -185,7 +174,6 @@ learnjs.showView = function(hash) {
 learnjs.addProfileLink = function(profile) {
     var link = learnjs.template('profile-link');
     link.find('a').text(profile.email);
-    console.log('profile.email', profile.email);
     $('.signin-bar').prepend(link);
 };
 
