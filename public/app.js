@@ -1,6 +1,49 @@
 'use strict';
 
-var learnjs = {};
+function googleSignIn(googleUser) {
+
+    var id_token = googleUser.getAuthResponse().id_token;
+    console.log('id_token', id_token);
+
+    AWS.config.update({
+        region: "us-east-1",
+        credentials: new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: learnjs.poolId,
+            Logins: {
+                'accounts.google.com': id_token
+            }
+        })
+    });
+
+    function refresh() {
+        console.log('refresh called');
+        return gapi.auth2.getAuthInstance().signIn({
+            prompt: 'login'
+        }).then(function(userUpdate) {
+            console.log('userUpdate', userUpdate);
+            var creds = AWS.config.credentials;
+            var newToken = userUpdate.getAuthResponse().id_token;
+            creds.params.Logins['accounts.google.com'] = newToken;
+            return learnjs.aswRefresh();
+        })
+    }
+
+    learnjs.awsRefresh().then(function(id) {
+        console.log('id', id);
+        learnjs.identity.resolve({
+            id: id,
+            email: googleUser.getBasicProfile().getEmail(),
+            refresh: refresh
+        })
+    });
+
+}
+
+var learnjs = {
+    poolId: 'us-east-1:83db3dbd-6446-4e9d-a679-5831104bff07',
+    identity: new $.Deferred()
+};
+
 
 learnjs.problems = [
     {
@@ -12,6 +55,23 @@ learnjs.problems = [
         code: "function problem() { return 42 === 6 * __; }"
     }
 ];
+
+learnjs.awsRefresh = function() {
+    var deferred = new $.Deferred();
+    console.log('awsRefresh called');
+    console.log('AWS.config.credentials', AWS.config.credentials);
+    console.log('AWS.config.credentials.identityId', AWS.config.credentials.identityId);
+
+    AWS.config.credentials.refresh(function(err) {
+        console.log('err', err);
+        if (err) {
+            deferred.reject(err);
+        } else {
+            deferred.resolve(AWS.config.credentials.identityId)
+        }
+    });
+    return deferred.promise();
+};
 
 learnjs.flashElement = function(elem, content) {
     elem.fadeOut('fast', function() {
@@ -39,6 +99,13 @@ learnjs.template = function(name) {
 learnjs.landingView = function() {
     return learnjs.template('landing-view');
 };
+
+learnjs.profileView = function() {
+    return learnjs.template('profile-view');
+    learnjs.identity.done(function(identity) {
+        view.find('.email').text(identity.email);
+    });
+}
 
 learnjs.buildCorrectFlash = function(problemNumber) {
     var correctFlash = learnjs.template('correct-flash');
@@ -103,6 +170,7 @@ learnjs.problemView = function(data) {
 learnjs.showView = function(hash) {
     var routes = {
         '#problem': learnjs.problemView,
+        '#profile': learnjs.profileView,
         '#': learnjs.landingView,
         '': learnjs.landingView
     };
@@ -114,9 +182,17 @@ learnjs.showView = function(hash) {
     }
 };
 
+learnjs.addProfileLink = function(profile) {
+    var link = learnjs.template('profile-link');
+    link.find('a').text(profile.email);
+    console.log('profile.email', profile.email);
+    $('.signin-bar').prepend(link);
+};
+
 learnjs.appOnReady = function() {
     window.onhashchange = function() {
         learnjs.showView(window.location.hash);
     };
     learnjs.showView(window.location.hash);
+    learnjs.identity.done(learnjs.addProfileLink);
 };
